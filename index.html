@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>スマホ募金箱</title>
+    <style>
+        /* 画面全体のスタイル（フルスクリーン風） */
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: #2c3e50; color: white;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            text-align: center; overflow: hidden;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+
+        /* 各画面のコンテナ */
+        .screen { display: none; width: 100%; height: 100%; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
+        .active { display: flex; }
+
+        /* テキストや画像のスタイル */
+        h1 { font-size: 2.5rem; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        p { font-size: 1.2rem; margin-bottom: 30px; line-height: 1.5; }
+        
+        #start-btn {
+            font-size: 1.5rem; padding: 15px 40px; border: none; border-radius: 30px;
+            background-color: #e74c3c; color: white; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        #qr-code { width: 200px; height: 200px; background-color: white; padding: 10px; border-radius: 10px; margin-bottom: 20px; }
+        
+        /* 開発用の映像確認用（本番では非表示にします） */
+        #debug-canvas { position: absolute; top: 10px; left: 10px; border: 2px solid red; width: 64px; height: 48px; opacity: 0.5; display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. スタート画面（音声再生許可とカメラ起動のため） -->
+    <div id="screen-start" class="screen active">
+        <h1>スマホ募金箱</h1>
+        <p>準備ができたらスタートを押してください</p>
+        <button id="start-btn">スタート</button>
+    </div>
+
+    <!-- 2. 待機画面 -->
+    <div id="screen-standby" class="screen">
+        <h1>お金を入れると<br>壁紙プレゼント！</h1>
+        <p>上の投入口から<br>硬貨を入れてね！</p>
+    </div>
+
+    <!-- 3. リターン画面（QRコード） -->
+    <div id="screen-reward" class="screen">
+        <h1>ありがとうございます！</h1>
+        <!-- QRコードの画像を用意して、srcを書き換えてください -->
+        <img id="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://example.com/wallpaper" alt="QR Code">
+        <p>カメラで読み取って<br>壁紙をダウンロードしてね</p>
+    </div>
+
+    <!-- 裏で動くカメラと解析用キャンバス（画面には映らない） -->
+    <video id="camera" autoplay playsinline muted style="display:none;"></video>
+    <canvas id="process-canvas" width="64" height="48" style="display:none;"></canvas>
+    <canvas id="debug-canvas" width="64" height="48"></canvas> <!-- 調整用 -->
+
+    <!-- 効果音（フリー音源のURLなどを指定してください） -->
+    <audio id="coin-sound" src="https://taira-komori.jpn.org/sound_os/coin01.mp3" preload="auto"></audio>
+
+    <script>
+        // --- 設定値（実際の箱の暗さに合わせて調整してください） ---
+        // 1. ピクセルの明るさがどれくらい変化したら「動いた」とみなすか（0〜255）
+        const COLOR_DIFF_THRESHOLD = 30; 
+        // 2. 画面全体の何ピクセルが変化したら「硬貨が通った」とみなすか（最大: 64x48 = 3072）
+        const PIXEL_COUNT_THRESHOLD = 150; 
+        // 3. QRコードを表示しておく時間（ミリ秒）
+        const REWARD_TIME_MS = 10000; 
+
+        // --- 変数 ---
+        const video = document.getElementById('camera');
+        const canvas = document.getElementById('process-canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const debugCanvas = document.getElementById('debug-canvas');
+        const debugCtx = debugCanvas.getContext('2d');
+        const coinSound = document.getElementById('coin-sound');
+        
+        let previousImageData = null;
+        let isRewarding = false; // 現在QRコードを表示中かどうか
+        let animationFrameId;
+
+        // --- 画面切り替え関数 ---
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // --- カメラの起動 ---
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    // 背面カメラを指定
+                    video: { facingMode: "environment" },
+                    audio: false
+                });
+                video.srcObject = stream;
+                video.play();
+                
+                // 映像が再生され始めたら検知ループを開始
+                video.onplaying = () => {
+                    detectMotion();
+                };
+            } catch (err) {
+                alert("カメラの起動に失敗しました。カメラのアクセス許可を確認してください。\nエラー: " + err.message);
+            }
+        }
+
+        // --- 動体検知（メイン処理） ---
+        function detectMotion() {
+            if (isRewarding) {
+                // リターン画面中は検知をお休みする
+                animationFrameId = requestAnimationFrame(detectMotion);
+                return;
+            }
+
+            // カメラ映像を64x48に縮小してキャンバスに描画（処理を軽くするため）
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            debugCtx.drawImage(video, 0, 0, canvas.width, canvas.height); // デバッグ用表示
+            
+            const currentImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const currentPixels = currentImageData.data;
+
+            if (previousImageData) {
+                const prevPixels = previousImageData.data;
+                let changedPixelCount = 0;
+
+                // 1ピクセルずつ（R, G, B, Alpha）前回の映像と比較する
+                for (let i = 0; i < currentPixels.length; i += 4) {
+                    const rDiff = Math.abs(currentPixels[i] - prevPixels[i]);
+                    const gDiff = Math.abs(currentPixels[i+1] - prevPixels[i+1]);
+                    const bDiff = Math.abs(currentPixels[i+2] - prevPixels[i+2]);
+                    
+                    // RGBのどれかが閾値以上変化していたら、そのピクセルは「変化した」とカウント
+                    if (rDiff > COLOR_DIFF_THRESHOLD || gDiff > COLOR_DIFF_THRESHOLD || bDiff > COLOR_DIFF_THRESHOLD) {
+                        changedPixelCount++;
+                        // デバッグ用に変化したピクセルを赤く塗る（本番では消してOK）
+                        currentPixels[i] = 255; currentPixels[i+1] = 0; currentPixels[i+2] = 0;
+                    }
+                }
+                debugCtx.putImageData(currentImageData, 0, 0); // デバッグ用更新
+
+                // 変化したピクセル数が設定値を超えたら「硬貨が通った」と判定！
+                if (changedPixelCount > PIXEL_COUNT_THRESHOLD) {
+                    triggerReward();
+                }
+            }
+
+            // 現在の映像を「前回の映像」として保存し、次のループへ
+            previousImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            animationFrameId = requestAnimationFrame(detectMotion);
+        }
+
+        // --- 硬貨検知時のアクション ---
+        function triggerReward() {
+            isRewarding = true; // 検知を一時停止
+            
+            // 効果音を鳴らす（最初から再生）
+            coinSound.currentTime = 0;
+            coinSound.play().catch(e => console.log("音声再生エラー:", e));
+
+            // リターン画面（QRコード）を表示
+            showScreen('screen-reward');
+
+            // 一定時間後に待機画面に戻す
+            setTimeout(() => {
+                showScreen('screen-standby');
+                previousImageData = null; // 戻った瞬間の誤作動を防ぐためリセット
+                isRewarding = false; // 検知を再開
+            }, REWARD_TIME_MS);
+        }
+
+        // --- スタートボタンのイベント ---
+        document.getElementById('start-btn').addEventListener('click', () => {
+            // iOS等の制限を解除するため、一度無音で音声を再生しておく
+            coinSound.play().then(() => { coinSound.pause(); }).catch(e => {});
+            
+            showScreen('screen-standby');
+            startCamera();
+        });
+    </script>
+</body>
+</html>
