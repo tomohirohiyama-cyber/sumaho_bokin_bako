@@ -90,7 +90,7 @@
         let isRewarding = false; // 現在QRコードを表示中かどうか
         let animationFrameId;
         var reward_ID = new Array('yomega', 'girls');
-        var reward_num = 0
+        var reward_num = 0;
         // --- 画面切り替え関数 ---
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
@@ -172,7 +172,7 @@
 
             // リターン画面（QRコード）を表示
             showScreen(reward_ID[reward_num]);
-            reward_num ++
+            reward_num ++;
             if (reward_num > 1){
                 reward_num = 0
             }
