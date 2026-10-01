@@ -17,14 +17,6 @@
         /* 各画面のコンテナ */
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
         .active { display: flex; }
-        .preview {
-            width: 100%;
-            height: inherit;
-            position: absolute;
-            z-index: -1;
-            top: 0;
-            left: 0;
-        }
 
         /* テキストや画像のスタイル */
         h1 { font-size: 2.5rem; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
@@ -58,7 +50,6 @@
 
     <!-- 3. リターン画面（QRコード） -->
     <div id="yomega" class="screen">
-        <img src="http://drive.google.com/uc?export=view&id=1Hzk2mpuvXlCcUg2wyfy-L7FOPUINc0un" alt="メイン画像" width="800" height="1000">
         <h1>ありがとうございます！<br>『ヨーヨーガール』</h1>
         <!-- QRコードの画像を用意して、srcを書き換えてください -->
         <img id="qr-code" src="https://github.com/tomohirohiyama-cyber/sumaho_bokin_bako/blob/main/media/yomega_QR.png?raw=true" alt="QR Code">
