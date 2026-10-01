@@ -49,8 +49,15 @@
     </div>
 
     <!-- 3. リターン画面（QRコード） -->
+    <div id="reward" class="screen">
+        <h1>ありがとうございます！</h1>
+        <img id="qr-code" src="media/kabegami_QR.png?raw=true" alt="QR Code">
+        <p>カメラで読み取って<br>壁紙をダウンロードしてね</p>
+    </div>
+    
     <div id="yomega" class="screen">
         <h1>ありがとうございます！<br>『ヨーヨーガール』</h1>
+        
         <!-- QRコードの画像を用意して、srcを書き換えてください -->
         <img id="qr-code" src="https://github.com/tomohirohiyama-cyber/sumaho_bokin_bako/blob/main/media/yomega_QR.png?raw=true" alt="QR Code">
         <p>カメラで読み取って<br>壁紙をダウンロードしてね<br>(開いたページの右上のボタンからダウンロードを選ぶ)</p>
@@ -171,11 +178,7 @@
             coinSound.play().catch(e => console.log("音声再生エラー:", e));
 
             // リターン画面（QRコード）を表示
-            showScreen(reward_ID[reward_num]);
-            reward_num ++;
-            if (reward_num > 1){
-                reward_num = 0
-            }
+            showScreen("reward");
 
             // 一定時間後に待機画面に戻す
             setTimeout(() => {
