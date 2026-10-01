@@ -15,15 +15,14 @@
             background-image: url("media/BG.gif");
             background-size: cover;
 		    background-position: center;
-		    background-repeat: no-repeat;
-        }
+		    background-repeat: no-repeat;        }
 
         /* 各画面のコンテナ */
         .screen { display: none; width: 100%; height: 100%; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; }
         .active { display: flex; }
 
         /* テキストや画像のスタイル */
-        h1 { font-size: 2.5rem; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        h1 { font-size: 2.5rem; margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); white-space: pre-wrap; }
         p { font-size: 1.2rem; margin-bottom: 30px; line-height: 1.5; }
         
         #start-btn {
@@ -42,22 +41,31 @@
     <!-- 1. スタート画面（音声再生許可とカメラ起動のため） -->
     <div id="screen-start" class="screen active">
         <h1>スマホ募金箱</h1>
+        <!-- 入力用のテキストボックス -->
+    	<label for="inputText">表示するメッセージを入力してください：</label>
+    	<textarea type="text" id="inputText" placeholder="ここに入力..." size="30"></textarea>
+    	<!-- 入力用のテキストボックス -->
+    	<label for="customQR">カスタムQR画像のURL：</label>
+    	<input type="text" id="customQR" placeholder="ここに入力..." size="30">
+
         <p>準備ができたらスタートを押してください</p>
         <button id="start-btn">スタート</button>
     </div>
 
     <!-- 2. 待機画面 -->
     <div id="screen-standby" class="screen">
-        <h1>募金で<br>壁紙プレゼント！</h1>
-        <p>上の投入口から<br>硬貨を入れてね！</p>
+        <h1 id="outputText"></h1>
+        <p>上の投入口から<br>硬貨を入れてね！<br>QRコードが出ます</p>
     </div>
 
     <!-- 3. リターン画面（QRコード） -->
-    <div id="reward" class="screen">
+    <div id="screen-reward" class="screen">
         <h1>ありがとうございます！</h1>
-        <img id="qr-code" src="media/kabegami_QR.png?raw=true" alt="QR Code">
+        <!-- QRコードの画像を用意して、srcを書き換えてください -->
+        <img id="qr-code" src="media/kabegami_QR.png" alt="QR Code">
         <p>カメラで読み取って<br>壁紙をダウンロードしてね</p>
     </div>
+
     <!-- 裏で動くカメラと解析用キャンバス（画面には映らない） -->
     <video id="camera" autoplay playsinline muted style="display:none;"></video>
     <canvas id="process-canvas" width="64" height="48" style="display:none;"></canvas>
@@ -83,9 +91,16 @@
         const debugCtx = debugCanvas.getContext('2d');
         const coinSound = document.getElementById('coin-sound');
         
+        // メッセージ設定用　HTML要素をIDを使って取得
+        const inputBox = document.getElementById('inputText');
+        const outputText = document.getElementById('outputText');
+        const customQR = document.getElementById('customQR');
+        const QR = document.getElementById('qr-code');
+        
         let previousImageData = null;
         let isRewarding = false; // 現在QRコードを表示中かどうか
         let animationFrameId;
+
         // --- 画面切り替え関数 ---
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
@@ -166,7 +181,7 @@
             coinSound.play().catch(e => console.log("音声再生エラー:", e));
 
             // リターン画面（QRコード）を表示
-            showScreen('reward');
+            showScreen('screen-reward');
 
             // 一定時間後に待機画面に戻す
             setTimeout(() => {
@@ -183,6 +198,11 @@
             
             showScreen('screen-standby');
             startCamera();
+            // テキストボックスの値(value)を、表示用要素のテキスト(textContent)に代入
+            outputText.textContent = inputBox.value;
+            if(customQR.value != ''){
+            	QR.src = customQR.value
+            }
         });
     </script>
 </body>
