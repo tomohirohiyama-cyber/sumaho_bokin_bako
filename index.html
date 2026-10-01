@@ -54,20 +54,6 @@
         <img id="qr-code" src="media/kabegami_QR.png?raw=true" alt="QR Code">
         <p>カメラで読み取って<br>壁紙をダウンロードしてね</p>
     </div>
-    
-    <div id="yomega" class="screen">
-        <h1>ありがとうございます！<br>『ヨーヨーガール』</h1>
-        
-        <!-- QRコードの画像を用意して、srcを書き換えてください -->
-        <img id="qr-code" src="https://github.com/tomohirohiyama-cyber/sumaho_bokin_bako/blob/main/media/yomega_QR.png?raw=true" alt="QR Code">
-        <p>カメラで読み取って<br>壁紙をダウンロードしてね<br>(開いたページの右上のボタンからダウンロードを選ぶ)</p>
-    </div>
-    <div id="girls" class="screen">
-        <h1>ありがとうございます！<br>『ツイン』</h1>
-        <!-- QRコードの画像を用意して、srcを書き換えてください -->
-        <img id="qr-code" src="https://github.com/tomohirohiyama-cyber/sumaho_bokin_bako/blob/main/media/GirlsSmall_QR.png?raw=true" alt="QR Code">
-        <p>カメラで読み取って<br>壁紙をダウンロードしてね<br>(開いたページの右上のボタンからダウンロードを選ぶ)</p>
-    </div>
     <!-- 裏で動くカメラと解析用キャンバス（画面には映らない） -->
     <video id="camera" autoplay playsinline muted style="display:none;"></video>
     <canvas id="process-canvas" width="64" height="48" style="display:none;"></canvas>
@@ -96,8 +82,6 @@
         let previousImageData = null;
         let isRewarding = false; // 現在QRコードを表示中かどうか
         let animationFrameId;
-        var reward_ID = new Array('yomega', 'girls');
-        var reward_num = 0;
         // --- 画面切り替え関数 ---
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
